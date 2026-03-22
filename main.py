@@ -39,7 +39,7 @@ def send_telegram(message, reply_markup=None):
 
 def get_sales_for_period(from_date, to_date):
     try:
-        url = f"https://caspitlight.valu.co.il/bo/api/sales?page=1&per=500&by_from_date={from_date}&by_to_date={to_date}"
+        url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=500&by_from_date={from_date}&by_to_date={to_date}"
         response = requests.get(url, headers=CASPIT_HEADERS, timeout=10)
         data = response.json()
         sales = data.get("sales", data) if isinstance(data, dict) else data
@@ -59,7 +59,7 @@ def check_new_sales():
         return
     try:
         today = get_date_str()
-        url = f"https://caspitlight.valu.co.il/bo/api/sales?page=1&per=25&by_from_date={today}&by_to_date={today}"
+        url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=25&by_from_date={today}&by_to_date={today}"
         response = requests.get(url, headers=CASPIT_HEADERS, timeout=10)
         data = response.json()
         sales = data.get("sales", data) if isinstance(data, dict) else data
