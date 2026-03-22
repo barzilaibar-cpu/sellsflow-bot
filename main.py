@@ -45,9 +45,8 @@ def login():
         if r.status_code == 200:
             print("Login successful!")
             return True
-        else:
-            print(f"Login failed: {r.text[:200]}")
-            return False
+        print(f"Login failed: {r.text[:200]}")
+        return False
     except Exception as e:
         print(f"Login error: {e}")
         return False
@@ -58,27 +57,12 @@ def fetch_sales(from_dt, to_dt):
     url = f"{CASPIT_BASE}/bo/sales?page=1&per=500&by_from_date={from_str}&by_to_date={to_str}&by_is_by_hour=false&by_from_minute=00&by_from_hour=00&by_to_minute=59&by_to_hour=23"
     print(f"Fetching: {url[:100]}")
     r = session.get(url, timeout=10)
-    print(f"Status: {r.status_code}, Length: {len(r.text)}")
+    print(f"Status: {r.status_code}")
     if r.status_code == 403:
-        print("Got 403, trying to re-login...")
+        print("Got 403, re-logging in...")
         if login():
             r = session.get(url, timeout=10)
     return r
-
-def get_sales_for_period(days_ago_start, days_ago_end=0):
-    try:
-        from_dt = datetime.now() - timedelta(days=days_ago_start)
-        to_dt = datetime.now() - timedelta(days=days_ago_end)
-        r = fetch_sales(from_dt, to_dt)
-        data = r.json()
-        sales = data.get("sales", data) if isinstance(data, dict) else data
-        total = sum(float(s.get("amount", 0)) for s in (sales or []))
-        count = len(sales or [])
-        print(f"Found {count} sales, total {total}")
-        return total, count
-    except Exception as e:
-        print(f"Error getting sales: {e}")
-        return 0, 0
 
 def is_active_hours():
     now = datetime.now()
@@ -132,7 +116,7 @@ def check_new_sales():
         if new_sales:
             last_seen_id = new_sales[0].get("id")
     except Exception as e:
-        print(f"Error checking sales: {e}")
+        print(f"Error: {e}")
 
 def send_daily_summary():
     total = daily_sales["total"]
@@ -154,7 +138,7 @@ def webhook():
 
 @app.route("/", methods=["GET"])
 def home():
-    return {"status": "SellsFlow Bot פעיל ✅"}, 200
+    return {"status": "SellsFlow Bot active"}, 200
 
 def run_scheduler():
     schedule.every(2).minutes.do(check_new_sales)
@@ -173,7 +157,7 @@ threading.Thread(target=run_scheduler, daemon=True).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     if login():
-        send_telegram("✅ <b>SellsFlow Bot הופעל!</b>\nמחובר לכספית 🌿")
+        send_telegram("✅ <b>SellsFlow הופעל!</b>\nמחובר לכספית 🌿")
     else:
-        send_telegram("⚠️ <b>SellsFlow Bot הופעל</b> אך ההתחברות לכספית נכשלה")
+        send_telegram("⚠️ SellsFlow הופעל אך ההתחברות לכספית נכשלה")
     app.run(host="0.0.0.0", port=port)
