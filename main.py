@@ -177,11 +177,3 @@ if __name__ == "__main__":
     else:
         send_telegram("⚠️ <b>SellsFlow Bot הופעל</b> אך ההתחברות לכספית נכשלה")
     app.run(host="0.0.0.0", port=port)
-```
-
----
-
-**Before you paste this — go to Railway → Variables → Raw Editor and add 2 new lines:**
-```
-CASPIT_USERNAME=3725885BO
-CASPIT_PASSWORD=5885BO987
