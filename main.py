@@ -37,16 +37,33 @@ def send_telegram(message, reply_markup=None):
         payload["reply_markup"] = reply_markup
     requests.post(url, json=payload)
 
-def get_sales_for_period(from_date, to_date):
+def get_sales_for_period(days_ago_start, days_ago_end=0):
     try:
-        url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=500&by_from_date={from_date}&by_to_date={to_date}"
+        from urllib.parse import quote
+        def format_date(days_ago, end_of_day=False):
+            d = datetime.now() - timedelta(days=days_ago)
+            if end_of_day:
+                d = d.replace(hour=23, minute=59, second=59)
+            else:
+                d = d.replace(hour=0, minute=0, second=0)
+            # Format like Keshafit expects
+            day_names = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+            month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            day_name = day_names[d.weekday()]
+            month_name = month_names[d.month - 1]
+            return quote(f"{day_name}+{month_name}+{d.day:02d}+{d.year}+{d.hour:02d}:{d.minute:02d}:{d.second:02d}+GMT+0200+(Israel+Standard+Time)")
+
+        from_str = format_date(days_ago_start)
+        to_str = format_date(days_ago_end, end_of_day=True)
+        url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=500&by_from_date={from_str}&by_to_date={to_str}"
         response = requests.get(url, headers=CASPIT_HEADERS, timeout=10)
         data = response.json()
         sales = data.get("sales", data) if isinstance(data, dict) else data
         total = sum(float(s.get("amount", 0)) for s in sales)
         count = len(sales)
         return total, count
-    except:
+    except Exception as e:
+        print(f"Error getting sales: {e}")
         return 0, 0
 
 def get_date_str(days_ago=0):
