@@ -15,6 +15,8 @@ CASPIT_USERNAME = os.environ.get("CASPIT_USERNAME")
 CASPIT_PASSWORD = os.environ.get("CASPIT_PASSWORD")
 CASPIT_BASE = "https://caspitlight.valu.co.il"
 
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+
 daily_sales = {"total": 0, "count": 0}
 last_seen_id = None
 access_token = None
@@ -39,7 +41,13 @@ def login():
         r = requests.post(
             f"{CASPIT_BASE}/bo/token_login",
             json={"username": CASPIT_USERNAME, "password": CASPIT_PASSWORD},
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": UA,
+                "Accept": "application/json",
+                "Origin": CASPIT_BASE,
+                "Referer": f"{CASPIT_BASE}/bo"
+            },
             timeout=10
         )
         print(f"Login status: {r.status_code}")
@@ -56,7 +64,11 @@ def login():
 def get_headers():
     return {
         "Authorization": f"Token {access_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": UA,
+        "Accept": "application/json",
+        "Origin": CASPIT_BASE,
+        "Referer": f"{CASPIT_BASE}/bo"
     }
 
 def fetch_sales(from_dt, to_dt):
