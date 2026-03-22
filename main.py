@@ -11,14 +11,16 @@ app = Flask(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 BIG_SALE_THRESHOLD = float(os.environ.get("BIG_SALE_THRESHOLD", 500))
-CASPIT_COOKIE = os.environ.get("CASPIT_COOKIE", "")
 
 daily_sales = {"total": 0, "count": 0}
 last_seen_id = None
-CASPIT_HEADERS = {"Cookie": CASPIT_COOKIE}
 
 DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+def get_headers():
+    cookie = os.environ.get("CASPIT_COOKIE", "")
+    return {"Cookie": cookie}
 
 def format_caspit_date(dt, end_of_day=False):
     if end_of_day:
@@ -55,11 +57,14 @@ def get_sales_for_period(days_ago_start, days_ago_end=0):
         from_str = format_caspit_date(from_dt, end_of_day=False)
         to_str = format_caspit_date(to_dt, end_of_day=True)
         url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=500&by_from_date={from_str}&by_to_date={to_str}&by_is_by_hour=false&by_from_minute=00&by_from_hour=00&by_to_minute=59&by_to_hour=23"
-        response = requests.get(url, headers=CASPIT_HEADERS, timeout=10)
+        print(f"Fetching: {url[:120]}")
+        response = requests.get(url, headers=get_headers(), timeout=10)
+        print(f"Status: {response.status_code}, Length: {len(response.text)}")
         data = response.json()
         sales = data.get("sales", data) if isinstance(data, dict) else data
         total = sum(float(s.get("amount", 0)) for s in (sales or []))
         count = len(sales or [])
+        print(f"Found {count} sales, total {total}")
         return total, count
     except Exception as e:
         print(f"Error getting sales: {e}")
@@ -73,7 +78,7 @@ def check_new_sales():
         from_str = format_caspit_date(datetime.now(), end_of_day=False)
         to_str = format_caspit_date(datetime.now(), end_of_day=True)
         url = f"https://caspitlight.valu.co.il/bo/sales?page=1&per=25&by_from_date={from_str}&by_to_date={to_str}&by_is_by_hour=false&by_from_minute=00&by_from_hour=00&by_to_minute=59&by_to_hour=23"
-        response = requests.get(url, headers=CASPIT_HEADERS, timeout=10)
+        response = requests.get(url, headers=get_headers(), timeout=10)
         data = response.json()
         sales = data.get("sales", data) if isinstance(data, dict) else data
         if not sales:
@@ -128,7 +133,7 @@ def send_summary(label="סיכום"):
     )
     send_telegram(msg, reply_markup=keyboard)
 
-@app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST", "OPTIONS"])
 def webhook():
     data = request.json or {}
     if "callback_query" in data:
