@@ -17,7 +17,7 @@ CASPIT_BASE = "https://caspitlight.valu.co.il"
 
 daily_sales = {"total": 0, "count": 0}
 last_seen_id = None
-session = requests.Session()
+access_token = None
 
 DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -33,9 +33,10 @@ def format_date(dt, end_of_day=False):
     return f"{day}+{month}+{dt.day:02d}+{dt.year}+{t}+GMT%2B0200+(Israel+Standard+Time)"
 
 def login():
+    global access_token
     try:
         print("Logging in to Keshafit...")
-        r = session.post(
+        r = requests.post(
             f"{CASPIT_BASE}/bo/token_login",
             json={"username": CASPIT_USERNAME, "password": CASPIT_PASSWORD},
             headers={"Content-Type": "application/json"},
@@ -43,6 +44,7 @@ def login():
         )
         print(f"Login status: {r.status_code}")
         if r.status_code == 200:
+            access_token = r.json().get("access_token")
             print("Login successful!")
             return True
         print(f"Login failed: {r.text[:200]}")
@@ -51,17 +53,23 @@ def login():
         print(f"Login error: {e}")
         return False
 
+def get_headers():
+    return {
+        "Authorization": f"Token {access_token}",
+        "Content-Type": "application/json"
+    }
+
 def fetch_sales(from_dt, to_dt):
     from_str = format_date(from_dt, end_of_day=False)
     to_str = format_date(to_dt, end_of_day=True)
     url = f"{CASPIT_BASE}/bo/sales?page=1&per=500&by_from_date={from_str}&by_to_date={to_str}&by_is_by_hour=false&by_from_minute=00&by_from_hour=00&by_to_minute=59&by_to_hour=23"
     print(f"Fetching: {url[:100]}")
-    r = session.get(url, timeout=10)
+    r = requests.get(url, headers=get_headers(), timeout=10)
     print(f"Status: {r.status_code}")
-    if r.status_code == 403:
-        print("Got 403, re-logging in...")
+    if r.status_code in [401, 403]:
+        print("Auth failed, re-logging in...")
         if login():
-            r = session.get(url, timeout=10)
+            r = requests.get(url, headers=get_headers(), timeout=10)
     return r
 
 def is_active_hours():
@@ -116,7 +124,7 @@ def check_new_sales():
         if new_sales:
             last_seen_id = new_sales[0].get("id")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error checking sales: {e}")
 
 def send_daily_summary():
     total = daily_sales["total"]
